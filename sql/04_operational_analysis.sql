@@ -135,16 +135,23 @@ ORDER BY d.travel_time_mins DESC
 LIMIT 25;
 
 -- 30. Refund Analysis
+-- Uses a CTE to avoid correlated-subquery scoping issues.
+WITH monthly_totals AS (
+    SELECT
+        DATE_FORMAT(order_date, '%Y-%m') AS year_month,
+        COUNT(*) AS total_orders
+    FROM orders
+    WHERE order_status IN ('Delivered', 'Refunded')
+    GROUP BY year_month
+)
 SELECT
     DATE_FORMAT(o.order_date, '%Y-%m') AS year_month,
     COUNT(*) AS refund_count,
     ROUND(SUM(o.total_amount), 2) AS refund_amount,
     ROUND(AVG(o.customer_rating), 2) AS avg_rating,
-    ROUND(COUNT(*) * 100.0 / NULLIF(
-        (SELECT COUNT(*) FROM orders WHERE order_status IN ('Delivered', 'Refunded')
-         AND DATE_FORMAT(order_date, '%Y-%m') = year_month), 0
-    ), 3) AS refund_rate_pct
+    ROUND(COUNT(*) * 100.0 / NULLIF(MAX(mt.total_orders), 0), 3) AS refund_rate_pct
 FROM orders o
+JOIN monthly_totals mt ON DATE_FORMAT(o.order_date, '%Y-%m') = mt.year_month
 WHERE o.order_status = 'Refunded'
 GROUP BY year_month
 ORDER BY year_month;

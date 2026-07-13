@@ -94,10 +94,13 @@ GROUP BY year_month, payment_method
 ORDER BY year_month, transaction_count DESC;
 
 -- 46. Customer Retention Cohort Analysis
+-- Tracks what fraction of each monthly acquisition cohort returns
+-- in subsequent months.  month_offset = 0 is the signup month itself.
 WITH first_order AS (
     SELECT
         customer_id,
-        DATE_FORMAT(MIN(order_date), '%Y-%m') AS cohort_month
+        MIN(order_date) AS first_order_date,
+        DATE_FORMAT(MIN(order_date), '%Y-%m-01') AS cohort_month
     FROM orders
     WHERE order_status IN ('Delivered', 'Refunded')
     GROUP BY customer_id
@@ -105,8 +108,10 @@ WITH first_order AS (
 cohort_activity AS (
     SELECT
         f.cohort_month,
-        TIMESTAMPDIFF(MONTH, STR_TO_DATE(CONCAT(f.cohort_month, '-01'), '%Y-%m-%d'),
-                           STR_TO_DATE(CONCAT(DATE_FORMAT(o.order_date, '%Y-%m'), '-01'), '%Y-%m-%d')) AS month_offset,
+        PERIOD_DIFF(
+            DATE_FORMAT(o.order_date, '%Y%m'),
+            DATE_FORMAT(f.first_order_date, '%Y%m')
+        ) AS month_offset,
         COUNT(DISTINCT o.customer_id) AS active_customers
     FROM first_order f
     JOIN orders o ON f.customer_id = o.customer_id
@@ -123,25 +128,32 @@ SELECT
     ROUND(MAX(CASE WHEN month_offset = 3 THEN active_customers END) * 100.0
         / NULLIF(MAX(CASE WHEN month_offset = 0 THEN active_customers END), 0), 1) AS month_3_retention_pct
 FROM cohort_activity
-WHERE cohort_month >= '2022-01'
+WHERE cohort_month >= '2022-01-01'
 GROUP BY cohort_month
 ORDER BY cohort_month;
 
--- 47. Weekend vs. Weekday Performance Comparison
+-- 47. Customer Lifetime Value Trend (Top 10% by Monthly Cohort)
+-- Shows whether newly acquired customers are spending more or less over time.
+WITH cohort_ltv AS (
+    SELECT
+        DATE_FORMAT(o.order_date, '%Y-%m') AS order_month,
+        DATE_FORMAT(MIN(o.order_date) OVER(PARTITION BY o.customer_id), '%Y-%m') AS acquisition_month,
+        o.customer_id,
+        SUM(o.total_amount) AS monthly_spend
+    FROM orders o
+    WHERE o.order_status = 'Delivered'
+    GROUP BY o.customer_id, order_month, acquisition_month
+)
 SELECT
-    CASE WHEN DAYOFWEEK(order_date) IN (1, 7) THEN 'Weekend' ELSE 'Weekday' END AS day_category,
-    DAYOFWEEK(order_date) AS day_number,
-    DAYNAME(order_date) AS day_name,
-    COUNT(DISTINCT order_id) AS order_count,
-    ROUND(SUM(total_amount), 2) AS revenue,
-    ROUND(AVG(total_amount), 2) AS avg_order_value,
-    ROUND(AVG(d.travel_time_mins), 1) AS avg_delivery_time,
-    ROUND(SUM(CASE WHEN o.order_status = 'Cancelled' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS cancellation_rate
-FROM orders o
-LEFT JOIN delivery_logs d ON o.order_id = d.order_id
-WHERE o.order_status IN ('Delivered', 'Cancelled', 'Refunded')
-GROUP BY day_category, day_number, day_name
-ORDER BY day_number;
+    acquisition_month,
+    COUNT(DISTINCT customer_id) AS acquired_customers,
+    ROUND(AVG(monthly_spend), 2) AS avg_monthly_spend_per_customer,
+    ROUND(SUM(monthly_spend), 2) AS total_cohort_revenue
+FROM cohort_ltv
+WHERE order_month = acquisition_month  -- only their first month's spend
+  AND acquisition_month >= '2022-01'
+GROUP BY acquisition_month
+ORDER BY acquisition_month;
 
 -- 48. Platform Economics Breakdown
 SELECT

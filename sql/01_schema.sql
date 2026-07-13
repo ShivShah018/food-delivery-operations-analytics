@@ -1,7 +1,14 @@
 -- ============================================================
 -- SwiftDash Operations Analytics — Database Schema
 -- Platform: MySQL 8.0+
--- Description: Defines all tables for food delivery analytics
+-- Description: Normalised star-schema for food-delivery analytics.
+-- Normalisation choices:
+--   * delivery_logs is a separate 1:1 table (not embedded in
+--     orders) because operational data (weather, traffic) has
+--     different update frequency than transactional data.
+--   * customer_city / restaurant_city are denormalised in orders
+--     to avoid frequent joins in city-level aggregations — a
+--     deliberate performance trade-off for the analytics use case.
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS swiftdash_analytics
@@ -25,7 +32,8 @@ CREATE TABLE customers (
     email           VARCHAR(100),
     signup_date     DATE,
     is_active       BOOLEAN         DEFAULT TRUE,
-    created_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- -----------------------------------------------------------
@@ -44,7 +52,8 @@ CREATE TABLE restaurants (
     join_date           DATE,
     is_active           BOOLEAN         DEFAULT TRUE,
     preparation_time_mins INT           CHECK (preparation_time_mins BETWEEN 2 AND 60),
-    created_at          TIMESTAMP       DEFAULT CURRENT_TIMESTAMP
+    created_at          TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- -----------------------------------------------------------
@@ -62,11 +71,12 @@ CREATE TABLE drivers (
     rating          DECIMAL(2,1)    CHECK (rating BETWEEN 1.0 AND 5.0),
     join_date       DATE,
     is_active       BOOLEAN         DEFAULT TRUE,
-    created_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- -----------------------------------------------------------
--- 4. Orders
+-- 4. Orders (Central Fact Table)
 -- -----------------------------------------------------------
 DROP TABLE IF EXISTS orders;
 CREATE TABLE orders (
@@ -92,9 +102,9 @@ CREATE TABLE orders (
     restaurant_city     VARCHAR(50),
     customer_rating     TINYINT         CHECK (customer_rating BETWEEN 1 AND 5 OR customer_rating IS NULL),
 
-    FOREIGN KEY (customer_id)   REFERENCES customers(customer_id),
-    FOREIGN KEY (restaurant_id) REFERENCES restaurants(restaurant_id),
-    FOREIGN KEY (driver_id)     REFERENCES drivers(driver_id),
+    FOREIGN KEY (customer_id)   REFERENCES customers(customer_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants(restaurant_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (driver_id)     REFERENCES drivers(driver_id) ON DELETE SET NULL ON UPDATE CASCADE,
 
     INDEX idx_order_date (order_date),
     INDEX idx_customer (customer_id),
@@ -116,7 +126,7 @@ CREATE TABLE order_items (
     unit_price      DECIMAL(10,2)   CHECK (unit_price > 0),
     line_total      DECIMAL(10,2)   CHECK (line_total >= 0),
 
-    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE ON UPDATE CASCADE,
     INDEX idx_order (order_id),
     INDEX idx_category (category)
 );
@@ -137,8 +147,8 @@ CREATE TABLE delivery_logs (
     weather_condition   ENUM('Clear', 'Cloudy', 'Light Rain', 'Heavy Rain', 'Foggy'),
     is_on_time          BOOLEAN         DEFAULT TRUE,
 
-    FOREIGN KEY (order_id)  REFERENCES orders(order_id),
-    FOREIGN KEY (driver_id) REFERENCES drivers(driver_id),
+    FOREIGN KEY (order_id)  REFERENCES orders(order_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (driver_id) REFERENCES drivers(driver_id) ON DELETE RESTRICT ON UPDATE CASCADE,
 
     INDEX idx_driver (driver_id),
     INDEX idx_on_time (is_on_time)

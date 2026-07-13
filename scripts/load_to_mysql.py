@@ -1,107 +1,88 @@
 """
-SwiftDash — MySQL Data Loader
-Loads cleaned CSV files into MySQL database.
-Uses SQLAlchemy for bulk insert.
+Load cleaned CSV files into MySQL.
 
-Prerequisites:
-- MySQL 8.0+ running locally or remotely
-- Database 'swiftdash_analytics' created (run sql/01_schema.sql first)
-- .env file with DB credentials (or use defaults below)
+Requires:
+  - MySQL 8.0+ running at DB_CONFIG.host
+  - Database & tables already created (run sql/01_schema.sql)
+  - .env file for credentials (optional)
 """
 
-import os
+import sys
+import logging
 import pandas as pd
 from pathlib import Path
 from sqlalchemy import create_engine, text
-from dotenv import load_dotenv
 
-load_dotenv()
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from config import CLEAN_DIR, DB_CONFIG, CLEAN_FILES, LOG_FILE, LOG_FORMAT, LOG_DATE_FORMAT
 
-CLEAN_DIR = Path(__file__).resolve().parents[1] / "data" / "cleaned"
-
-DB_CONFIG = {
-    "host": os.getenv("DB_HOST", "localhost"),
-    "port": int(os.getenv("DB_PORT", 3306)),
-    "user": os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASSWORD", ""),
-    "database": os.getenv("DB_NAME", "swiftdash_analytics"),
-}
+logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format=LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
+logger = logging.getLogger("load_to_mysql")
 
 FILES_TABLES = [
-    ("customers_clean.csv", "customers"),
-    ("restaurants_clean.csv", "restaurants"),
-    ("drivers_clean.csv", "drivers"),
-    ("orders_clean.csv", "orders"),
-    ("order_items_clean.csv", "order_items"),
-    ("delivery_logs_clean.csv", "delivery_logs"),
+    ("customers", "customers"),
+    ("restaurants", "restaurants"),
+    ("drivers", "drivers"),
+    ("orders", "orders"),
+    ("order_items", "order_items"),
+    ("delivery_logs", "delivery_logs"),
 ]
 
 
-def get_engine():
-    url = (
+def _connection_str() -> str:
+    return (
         f"mysql+mysqlconnector://{DB_CONFIG['user']}:{DB_CONFIG['password']}"
         f"@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}"
     )
-    return create_engine(url)
 
 
 def clear_tables(engine):
-    """Truncate all tables in reverse dependency order."""
     with engine.connect() as conn:
         conn.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
         for _, table in reversed(FILES_TABLES):
             conn.execute(text(f"TRUNCATE TABLE {table}"))
-            print(f"  Truncated {table}")
         conn.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
         conn.commit()
+    logger.info("All tables truncated")
 
 
 def load_data(engine):
-    for file_name, table_name in FILES_TABLES:
-        path = CLEAN_DIR / file_name
+    for key, table in FILES_TABLES:
+        path = CLEAN_DIR / CLEAN_FILES[key]
         if not path.exists():
-            print(f"  [SKIP] {file_name} not found")
+            logger.warning("File not found, skipping: %s", path)
             continue
-        df = pd.read_csv(path)
-        rows = len(df)
-        df.to_sql(
-            table_name,
-            con=engine,
-            if_exists="append",
-            index=False,
-            method="multi",
-            chunksize=5000,
-        )
-        print(f"  [OK] {file_name} -> {table_name} ({rows} rows)")
+        try:
+            df = pd.read_csv(path)
+            df.to_sql(table, con=engine, if_exists="append", index=False, method="multi", chunksize=5000)
+            logger.info("Loaded %s -> %s (%s rows)", path.name, table, len(df))
+        except Exception as exc:
+            logger.error("Failed loading %s: %s", path.name, exc)
+            raise
 
 
 def main():
-    print("=" * 50)
-    print("SwiftDash MySQL Data Loader")
-    print("=" * 50)
-
-    engine = get_engine()
-    print(f"\nConnecting to {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']} ...")
+    logger.info("=" * 50)
+    logger.info("START: MySQL load")
+    logger.info("=" * 50)
 
     try:
+        engine = create_engine(_connection_str())
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        print("  Connection successful")
-    except Exception as e:
-        print(f"  Connection failed: {e}")
-        print("\nMake sure MySQL is running and the database is created.")
-        print("Run sql/01_schema.sql first to create the database and tables.")
+        logger.info("Connected to %s:%s/%s", DB_CONFIG["host"], DB_CONFIG["port"], DB_CONFIG["database"])
+    except Exception as exc:
+        logger.error("MySQL connection failed: %s", exc)
+        print("ERROR: Could not connect to MySQL. Check DB_CONFIG in config.py and ensure the server is running.")
+        print(f"  Host: {DB_CONFIG['host']}:{DB_CONFIG['port']}, DB: {DB_CONFIG['database']}")
         return
 
-    print("\nClearing existing data...")
     clear_tables(engine)
-
-    print("\nLoading data...")
     load_data(engine)
 
-    print("\n" + "=" * 50)
-    print("Data loading complete! Run verification queries to confirm.")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("MySQL load complete.")
+    logger.info("=" * 50)
 
 
 if __name__ == "__main__":

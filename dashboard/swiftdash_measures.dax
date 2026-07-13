@@ -1,0 +1,216 @@
+// ========================================================================
+// SwiftDash Power BI — DAX Measures
+// ========================================================================
+// How to use:
+//   1. Power BI Desktop > Modeling > New Measure
+//   2. Paste each measure into the formula bar
+//   3. Place measures in a dedicated "Measures" table for organisation
+//
+// Table names used: orders, customers, restaurants, drivers,
+//                   delivery_logs, order_items, Calendar
+// ========================================================================
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- CORE KPI MEASURES
+-- ═══════════════════════════════════════════════════════════════════════
+
+Total Revenue =
+    CALCULATE(
+        SUM(orders[total_amount]),
+        orders[order_status] IN {"Delivered", "Refunded"}
+    )
+
+Total Orders =
+    CALCULATE(
+        COUNTROWS(orders),
+        orders[order_status] IN {"Delivered", "Refunded"}
+    )
+
+Avg Order Value =
+    DIVIDE([Total Revenue], [Total Orders])
+
+Total Delivered Orders =
+    CALCULATE(COUNTROWS(orders), orders[order_status] = "Delivered")
+
+Cancellation Rate =
+    VAR AllOrders = COUNTROWS(orders)
+    VAR Cancelled = CALCULATE(COUNTROWS(orders), orders[order_status] = "Cancelled")
+    RETURN DIVIDE(Cancelled, AllOrders, 0)
+
+OnTime Delivery Rate =
+    VAR TotalDeliveries = COUNTROWS(delivery_logs)
+    VAR OnTime = COUNTROWS(FILTER(delivery_logs, delivery_logs[is_on_time] = TRUE))
+    RETURN DIVIDE(OnTime, TotalDeliveries, 0)
+
+Avg Customer Rating =
+    CALCULATE(
+        AVERAGE(orders[customer_rating]),
+        orders[customer_rating] > 0
+    )
+
+Total Discounts Given =
+    SUM(orders[discount])
+
+Active Restaurants =
+    CALCULATE(COUNTROWS(restaurants), restaurants[is_active] = TRUE)
+
+Active Drivers =
+    CALCULATE(COUNTROWS(drivers), drivers[is_active] = TRUE)
+
+Unique Customers =
+    CALCULATE(
+        DISTINCTCOUNT(orders[customer_id]),
+        orders[order_status] IN {"Delivered", "Refunded"}
+    )
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- TIME INTELLIGENCE MEASURES
+-- ═══════════════════════════════════════════════════════════════════════
+-- Requires a Calendar table with continuous dates covering 2022-2025.
+
+Revenue MoM Growth =
+    VAR CurrentMonth = [Total Revenue]
+    VAR PrevMonth =
+        CALCULATE([Total Revenue], PREVIOUSMONTH('Calendar'[Date]))
+    RETURN
+        DIVIDE(CurrentMonth - PrevMonth, PrevMonth, 0)
+
+Revenue YoY Growth =
+    VAR CurrentPeriod = [Total Revenue]
+    VAR PrevPeriod =
+        CALCULATE([Total Revenue], SAMEPERIODLASTYEAR('Calendar'[Date]))
+    RETURN
+        DIVIDE(CurrentPeriod - PrevPeriod, PrevPeriod, 0)
+
+Revenue Rolling30D =
+    CALCULATE(
+        [Total Revenue],
+        DATESINPERIOD('Calendar'[Date], MAX('Calendar'[Date]), -30, DAY)
+    )
+
+Avg Order Value Rolling30D =
+    VAR Rev30D =
+        CALCULATE(
+            SUM(orders[total_amount]),
+            DATESINPERIOD('Calendar'[Date], MAX('Calendar'[Date]), -30, DAY),
+            orders[order_status] IN {"Delivered", "Refunded"}
+        )
+    VAR Ord30D =
+        CALCULATE(
+            COUNTROWS(orders),
+            DATESINPERIOD('Calendar'[Date], MAX('Calendar'[Date]), -30, DAY),
+            orders[order_status] IN {"Delivered", "Refunded"}
+        )
+    RETURN DIVIDE(Rev30D, Ord30D, 0)
+
+Revenue MTD =
+    TOTALMTD([Total Revenue], 'Calendar'[Date])
+
+Revenue QTD =
+    TOTALQTD([Total Revenue], 'Calendar'[Date])
+
+Revenue YTD =
+    TOTALYTD([Total Revenue], 'Calendar'[Date])
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- CUSTOMER MEASURES
+-- ═══════════════════════════════════════════════════════════════════════
+
+Repeat Customer Rate =
+    VAR CustomersWithOrders =
+        SUMMARIZE(orders, orders[customer_id])
+    VAR RepeatCustomers =
+        FILTER(
+            CustomersWithOrders,
+            CALCULATE(
+                COUNTROWS(orders),
+                orders[order_status] = "Delivered"
+            ) > 1
+        )
+    RETURN
+        DIVIDE(
+            COUNTROWS(RepeatCustomers),
+            COUNTROWS(CustomersWithOrders),
+            0
+        )
+
+Avg Customer Lifetime Value =
+    DIVIDE([Total Revenue], [Unique Customers], 0)
+
+New Customers (Period) =
+    VAR EarliestDate =
+        CALCULATE(
+            MIN(orders[order_date]),
+            ALLEXCEPT(orders, orders[customer_id])
+        )
+    RETURN
+        COUNTROWS(
+            FILTER(
+                VALUES(orders[customer_id]),
+                EarliestDate IN VALUES('Calendar'[Date])
+            )
+        )
+
+-- Customer segment lookup (assumes customer_features table is imported)
+Customer Segment Count =
+    DISTINCTCOUNT(customer_features[customer_segment])
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- OPERATIONAL MEASURES
+-- ═══════════════════════════════════════════════════════════════════════
+
+Avg Delivery Time Mins =
+    AVERAGE(delivery_logs[travel_time_mins])
+
+Avg Delivery Distance KM =
+    AVERAGE(delivery_logs[distance_km])
+
+Peak Hour Orders =
+    MAXX(
+        VALUES(orders[order_hour]),
+        CALCULATE(
+            COUNTROWS(orders),
+            orders[order_status] = "Delivered"
+        )
+    )
+
+Orders Per Driver =
+    DIVIDE([Total Delivered Orders], [Active Drivers], 0)
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- PAYMENT & REVENUE MIX
+-- ═══════════════════════════════════════════════════════════════════════
+
+Revenue by Payment Method =
+    SUMMARIZE(
+        orders,
+        orders[payment_method],
+        "Revenue", [Total Revenue],
+        "Orders", [Total Orders],
+        "Revenue Share", DIVIDE([Total Revenue], CALCULATE([Total Revenue], ALL(orders[payment_method])))
+    )
+
+Surge Revenue Premium =
+    VAR WithSurge = SUM(orders[total_amount])
+    VAR WithoutSurge =
+        SUMX(
+            orders,
+            orders[total_amount] / orders[surge_multiplier]
+        )
+    RETURN WithSurge - WithoutSurge
+
+-- ═══════════════════════════════════════════════════════════════════════
+//    Calendar table DAX (create as a calculated table)
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Calendar =
+//     ADDCOLUMNS(
+//         CALENDAR(DATE(2022, 1, 1), DATE(2025, 6, 30)),
+//         "Year", YEAR([Date]),
+//         "Quarter", "Q" & FORMAT([Date], "Q"),
+//         "Month", FORMAT([Date], "mmmm"),
+//         "MonthNo", MONTH([Date]),
+//         "YearMonth", FORMAT([Date], "yyyy-mm"),
+//         "Weekday", FORMAT([Date], "dddd"),
+//         "IsWeekend", WEEKDAY([Date], 2) > 5
+//     )

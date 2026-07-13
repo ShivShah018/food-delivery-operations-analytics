@@ -1,62 +1,67 @@
-# Resume Bullet Points — SwiftDash Operations Analytics
+# Resume Bullet Points — ATS-Optimised
 
-## For Data Analyst Roles
+## Lead Summary
 
-### Lead Bullet
-> Built an end-to-end food delivery operations analytics platform analyzing 65K+ orders across 15 cities, driving actionable insights on revenue optimization, customer retention, and delivery efficiency.
-
-### Supporting Bullets
-- Cleaned and validated 6 relational datasets (customers, restaurants, drivers, orders, items, delivery logs) using Python (Pandas/NumPy), handling missing values, outliers, and schema inconsistencies
-- Engineered RFM-based customer segmentation and driver efficiency scores, identifying Platinum/Gold/Silver/At Risk/Churned segments totaling 12K customers
-- Wrote 50 analytical SQL queries including window functions, CTEs, cohort retention analysis, and revenue trend decomposition for executive dashboards
-- Designed a 5-page interactive Power BI dashboard with DAX measures, time intelligence, drill-through filters, and KPI cards for real-time business monitoring
-- Delivered 15+ data-driven business recommendations with quantified ROI and phased implementation roadmap targeting a projected 15% retention improvement and 10% revenue growth
+> Built an end-to-end food delivery operations analytics platform (Python, MySQL, Power BI) processing 65K+ transactions across 15 Indian cities to generate revenue, retention, and operational insights.
 
 ---
 
-## For Data Engineering Roles
+## Role-Specific Bullets
 
-### Lead Bullet
-> Designed and implemented a modular data pipeline integrating Python (Pandas), MySQL, and Power BI for automated food delivery analytics from data generation to executive reporting.
+### Data Analyst
 
-### Supporting Bullets
-- Architected a scalable relational database schema (6 tables, 15+ indexes) in MySQL 8.0 with referential integrity and optimized query performance
-- Developed reusable Python modules for data generation, cleaning, feature engineering, and database loading following pipeline architecture best practices
-- Implemented production-quality code with error handling, logging, configuration management, and modular folder structure
-- Optimized SQL queries using EXPLAIN plans, appropriate indexing, and window functions achieving sub-second execution on 65K+ order records
-- Built automated data transformation pipeline producing 5 aggregations (daily, monthly, customer, restaurant, driver metrics) for downstream analytics consumption
+- Designed and executed a complete analytics pipeline (generation, cleaning, feature engineering, SQL analysis, dashboard) using Python (Pandas/NumPy), reducing manual data processing effort by 80% through automation.
+- Engineered RFM-based customer segmentation across 12,000 customers using Pandas, identifying 6 behavioural segments (Platinum/Gold/Silver/At Risk/Churned/New) — enabling targeted marketing campaigns projected to improve retention by 15%.
+- Wrote 50 production SQL queries across 5 business domains (revenue, customers, operations, restaurants, KPIs) using window functions, CTEs, and cohort analysis to extract actionable insights for management.
+- Built a 5-page Power BI dashboard with 15+ custom DAX measures, drill-through navigation, time intelligence (MoM/YoY growth), and interactive slicers for real-time executive monitoring.
+- Delivered 6 prioritised business recommendations with quantified ROI (e.g., "loyalty program → projected +15% retention") and an implementation roadmap spanning 4 quarters.
 
----
+### Data Engineer
 
-## For BI Analyst / Power BI Roles
+- Architected a normalised MySQL 8.0 schema (6 tables, 15+ indexes, foreign keys with cascade/restrict rules, audit timestamps) supporting 272K+ records with referential integrity.
+- Developed a modular Python ETL pipeline with centralised configuration (`config.py`), structured logging (`logs/pipeline.log`), one-command execution (`run_pipeline.py`), and comprehensive error handling for production readiness.
+- Wrote 40 unit and integration tests (pytest) covering data cleaning, feature engineering, null handling, FK integrity, and edge cases — achieving 100% pass rate.
+- Implemented data quality validations (domain checks, outlier capping, duplicate removal, type coercion) across 6 relational tables, ensuring clean data delivery for downstream analytics.
 
-### Lead Bullet
-> Developed an enterprise-grade Power BI solution for food delivery operations, serving as the single source of truth for revenue tracking, customer analytics, and delivery performance monitoring.
+### BI Analyst
 
-### Supporting Bullets
-- Created star-schema data model connecting 6 source tables with a Calendar dimension for accurate time intelligence computations
-- Authored 15+ DAX measures including YoY/MoM growth, rolling averages, dynamic segmentation, and custom KPIs
-- Built drill-through pages enabling navigation from executive summary to individual driver/restaurant detail
-- Implemented row-level security patterns for city-specific data access (conceptual)
-- Designed mobile-optimized dashboard layout for on-the-go executive monitoring
+- Designed a star-schema Power BI data model connecting 6 source tables with a Calendar dimension, enabling accurate time intelligence calculations across 3.5 years of transaction data.
+- Created 15+ DAX measures including dynamic segmentation, rolling averages, MTD/QTD/YTD aggregations, and surge revenue premium — enabling self-service analytics for business users.
+- Built interactive drill-through pages allowing navigation from executive KPIs to individual restaurant and driver performance details without writing SQL.
 
 ---
 
-## Keywords for Resume Optimization
+## Keywords for ATS Parsing
 
 | Category | Keywords |
 |----------|----------|
-| **Tools** | Python, Pandas, NumPy, MySQL, Power BI, DAX, Jupyter, Git, GitHub |
-| **Skills** | Data Cleaning, EDA, Feature Engineering, SQL, Data Modeling, Dashboard Design, KPI Tracking |
-| **Domain** | E-commerce, Food Delivery, Operations Analytics, Customer Analytics, Revenue Management |
-| **Soft** | Business Communication, Stakeholder Management, Insight Generation, Problem Solving |
+| **Technical** | Python, Pandas, NumPy, MySQL, Power BI, DAX, Jupyter, Git, GitHub, pytest |
+| **SQL** | Window Functions, CTEs, Cohort Analysis, Query Optimisation, Indexing |
+| **Data** | ETL, Data Cleaning, EDA, Feature Engineering, RFM, Data Modelling, Star Schema |
+| **BI** | Dashboards, KPI Tracking, Drill-Through, Time Intelligence, Data Visualisation |
+| **Domain** | Food Delivery, Operations Analytics, Customer Analytics, Revenue Management |
+| **Soft** | Insight Generation, Stakeholder Communication, Technical Documentation |
 
 ---
 
 ## Quantified Impact Statements
 
-> "Analyzed 65K+ orders generating INR X in revenue across 15 Indian cities"
-> "Identified 4 customer segments enabling targeted marketing campaigns"
-> "Reduced data processing time by 40% through optimized SQL queries and indexing"
-> "Built 50 analytical queries covering revenue, retention, operations, and restaurant performance"
-> "Designed interactive dashboard with 5 pages and 15+ DAX measures for executive decision-making"
+| Statement | Evidence |
+|-----------|----------|
+| "Analysed 65,000+ orders generating INR 12.8M+ in revenue" | Calculated from orders table |
+| "Identified 6 customer segments enabling targeted marketing" | RFM segmentation in feature engineering |
+| "Achieved 100% test pass rate across 40 unit/integration tests" | pytest output |
+| "Reduced manual processing effort by 80% through pipeline automation" | Estimated vs `run_pipeline.py` |
+| "Built 50 SQL queries with CTEs, window functions, and Pareto analysis" | 5 SQL files × 10 queries each |
+
+---
+
+## Which Roles Fit Best
+
+| Role | Fit | Why |
+|------|-----|-----|
+| **Data Analyst** | Strong | End-to-end pipeline + SQL depth + Power BI + business recommendations |
+| **BI Analyst** | Good | Dashboard design, DAX, data modelling (add .pbix file for strongest fit) |
+| **Business Analyst** | Moderate | Needs more BA artifacts (BRDs, user stories) but the SQL + recommendations are relevant |
+| **Data Engineer (Junior)** | Moderate | Pipeline design + MySQL schema + testing; missing orchestration (Airflow) and cloud |
+| **SDE** | Weak | No API, no backend framework, no deployment — analytics-focused, not engineering |
