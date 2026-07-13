@@ -17,7 +17,7 @@ SELECT
     DATEDIFF(CURDATE(), MAX(o.order_date)) AS days_since_last_order
 FROM customers c
 JOIN orders o ON c.customer_id = o.customer_id
-WHERE o.order_status IN ('Delivered', 'Refunded')
+    WHERE o.order_status = 'Delivered'
 GROUP BY c.customer_id, c.name, c.city, c.gender
 ORDER BY lifetime_value DESC
 LIMIT 20;
@@ -31,7 +31,7 @@ WITH customer_rfm AS (
         ROUND(SUM(o.total_amount), 2) AS monetary
     FROM customers c
     LEFT JOIN orders o ON c.customer_id = o.customer_id
-        AND o.order_status IN ('Delivered', 'Refunded')
+        AND o.order_status = 'Delivered'
     GROUP BY c.customer_id
 )
 SELECT
@@ -58,7 +58,7 @@ WITH monthly_orders AS (
         customer_id,
         COUNT(order_id) AS orders_count
     FROM orders
-    WHERE order_status IN ('Delivered', 'Refunded')
+    WHERE order_status = 'Delivered'
     GROUP BY year_month, customer_id
 ),
 monthly_metrics AS (
@@ -83,7 +83,7 @@ WITH first_orders AS (
         customer_id,
         MIN(order_date) AS first_order_date
     FROM orders
-    WHERE order_status IN ('Delivered', 'Refunded')
+    WHERE order_status = 'Delivered'
     GROUP BY customer_id
 )
 SELECT
@@ -109,7 +109,7 @@ SELECT
     ROUND(SUM(o.total_amount) / COUNT(DISTINCT c.customer_id), 2) AS revenue_per_customer
 FROM customers c
 LEFT JOIN orders o ON c.customer_id = o.customer_id
-    AND o.order_status IN ('Delivered', 'Refunded')
+    AND o.order_status = 'Delivered'
 GROUP BY age_group
 ORDER BY age_group;
 
@@ -124,7 +124,7 @@ SELECT
     ROUND(AVG(o.discount), 2) AS avg_discount_availed
 FROM customers c
 LEFT JOIN orders o ON c.customer_id = o.customer_id
-    AND o.order_status IN ('Delivered', 'Refunded')
+    AND o.order_status = 'Delivered'
 GROUP BY c.gender
 ORDER BY total_revenue DESC;
 
@@ -162,7 +162,7 @@ WITH order_counts AS (
         customer_id,
         COUNT(order_id) AS total_orders
     FROM orders
-    WHERE order_status IN ('Delivered', 'Refunded')
+    WHERE order_status = 'Delivered'
     GROUP BY customer_id
 )
 SELECT

@@ -53,16 +53,25 @@ ORDER BY times_ordered DESC
 LIMIT 25;
 
 -- 34. Restaurant Average Rating vs. Order Volume
+-- Per-restaurant metrics computed first, then averaged by rating bucket.
+WITH restaurant_perf AS (
+    SELECT
+        r.rating,
+        COUNT(DISTINCT o.order_id) AS orders,
+        ROUND(SUM(o.total_amount), 2) AS revenue
+    FROM restaurants r
+    JOIN orders o ON r.restaurant_id = o.restaurant_id
+    WHERE o.order_status = 'Delivered'
+    GROUP BY r.restaurant_id, r.rating
+)
 SELECT
-    r.rating AS restaurant_rating_bucket,
-    COUNT(DISTINCT r.restaurant_id) AS restaurant_count,
-    ROUND(AVG(COUNT(DISTINCT o.order_id)) OVER(PARTITION BY r.rating), 0) AS avg_orders_per_restaurant,
-    ROUND(AVG(SUM(o.total_amount)) OVER(PARTITION BY r.rating), 0) AS avg_revenue_per_restaurant
-FROM restaurants r
-JOIN orders o ON r.restaurant_id = o.restaurant_id
-WHERE o.order_status = 'Delivered'
-GROUP BY r.rating
-ORDER BY r.rating DESC;
+    rating AS restaurant_rating_bucket,
+    COUNT(*) AS restaurant_count,
+    ROUND(AVG(orders), 0) AS avg_orders_per_restaurant,
+    ROUND(AVG(revenue), 0) AS avg_revenue_per_restaurant
+FROM restaurant_perf
+GROUP BY rating
+ORDER BY rating DESC;
 
 -- 35. Restaurants with Highest Cancellation Rates
 SELECT
@@ -110,14 +119,25 @@ GROUP BY year_month
 ORDER BY year_month;
 
 -- 38. New Restaurant Onboarding vs. Performance
+-- Per-restaurant metrics computed first, then averaged by join year.
+WITH restaurant_perf AS (
+    SELECT
+        r.restaurant_id,
+        r.join_date,
+        COUNT(o.order_id) AS orders,
+        ROUND(SUM(o.total_amount), 2) AS revenue,
+        ROUND(AVG(o.customer_rating), 2) AS avg_customer_rating
+    FROM restaurants r
+    LEFT JOIN orders o ON r.restaurant_id = o.restaurant_id AND o.order_status = 'Delivered'
+    GROUP BY r.restaurant_id
+)
 SELECT
-    DATE_FORMAT(r.join_date, '%Y') AS join_year,
-    COUNT(DISTINCT r.restaurant_id) AS restaurants_onboarded,
-    ROUND(AVG(COUNT(o.order_id)), 0) AS avg_orders_per_restaurant,
-    ROUND(AVG(SUM(o.total_amount)), 0) AS avg_revenue_per_restaurant,
-    ROUND(AVG(o.customer_rating), 2) AS avg_customer_rating
-FROM restaurants r
-LEFT JOIN orders o ON r.restaurant_id = o.restaurant_id AND o.order_status = 'Delivered'
+    DATE_FORMAT(join_date, '%Y') AS join_year,
+    COUNT(*) AS restaurants_onboarded,
+    ROUND(AVG(orders), 0) AS avg_orders_per_restaurant,
+    ROUND(AVG(revenue), 0) AS avg_revenue_per_restaurant,
+    ROUND(AVG(avg_customer_rating), 2) AS avg_customer_rating
+FROM restaurant_perf
 GROUP BY join_year
 ORDER BY join_year;
 

@@ -1,6 +1,10 @@
 -- ============================================================
 -- REVENUE ANALYSIS QUERIES
 -- Analysis of revenue streams, trends, and profitability
+--
+-- REVENUE CONVENTION: Net revenue — only 'Delivered' orders
+-- count.  Refunded orders are excluded from all revenue figures
+-- and tracked separately in the refund analysis query (Q30).
 -- ============================================================
 
 -- 1. Daily Revenue Trend
@@ -10,7 +14,7 @@ SELECT
     ROUND(SUM(total_amount), 2) AS total_revenue,
     ROUND(AVG(total_amount), 2) AS avg_order_value
 FROM orders
-WHERE order_status IN ('Delivered', 'Refunded')
+WHERE order_status = 'Delivered'
 GROUP BY order_date
 ORDER BY order_date;
 
@@ -20,7 +24,7 @@ WITH monthly_rev AS (
         DATE_FORMAT(order_date, '%Y-%m') AS year_month,
         ROUND(SUM(total_amount), 2) AS revenue
     FROM orders
-    WHERE order_status IN ('Delivered', 'Refunded')
+    WHERE order_status = 'Delivered'
     GROUP BY year_month
 )
 SELECT
@@ -42,7 +46,7 @@ SELECT
     ROUND(AVG(total_amount), 2) AS avg_order_value,
     ROUND(SUM(total_amount) * 100.0 / SUM(SUM(total_amount)) OVER(), 2) AS revenue_share_pct
 FROM orders
-WHERE order_status IN ('Delivered', 'Refunded')
+WHERE order_status = 'Delivered'
 GROUP BY payment_method
 ORDER BY total_revenue DESC;
 
@@ -55,7 +59,7 @@ SELECT
     ROUND(SUM(delivery_fee), 2) AS delivery_revenue,
     ROUND(AVG(total_amount), 2) AS avg_order_value
 FROM orders
-WHERE order_status IN ('Delivered', 'Refunded')
+WHERE order_status = 'Delivered'
 GROUP BY restaurant_city
 ORDER BY total_revenue DESC;
 
@@ -66,7 +70,7 @@ SELECT
     ROUND(SUM(total_amount), 2) AS total_revenue,
     ROUND(AVG(total_amount), 2) AS avg_order_value
 FROM orders
-WHERE order_status IN ('Delivered', 'Refunded')
+WHERE order_status = 'Delivered'
 GROUP BY order_hour
 ORDER BY order_hour;
 
@@ -84,7 +88,7 @@ WITH customer_revenue AS (
         ROUND(SUM(o.total_amount), 2) AS lifetime_value
     FROM orders o
     JOIN customers c ON o.customer_id = c.customer_id
-    WHERE o.order_status IN ('Delivered', 'Refunded')
+    WHERE o.order_status = 'Delivered'
     GROUP BY c.customer_id
 )
 SELECT
@@ -123,7 +127,7 @@ SELECT
     ROUND(AVG(total_amount), 2) AS avg_order_value,
     ROUND(SUM(discount) * 100.0 / NULLIF(SUM(total_amount + discount), 0), 2) AS discount_rate_pct
 FROM orders
-WHERE order_status IN ('Delivered', 'Refunded')
+WHERE order_status = 'Delivered'
 GROUP BY discount_bucket
 ORDER BY total_revenue DESC;
 
@@ -135,7 +139,7 @@ SELECT
     ROUND(AVG(total_amount), 2) AS avg_order_value,
     ROUND(SUM(total_amount) / COUNT(DISTINCT DATE(order_date)), 2) AS revenue_per_day
 FROM orders
-WHERE order_status IN ('Delivered', 'Refunded')
+WHERE order_status = 'Delivered'
 GROUP BY day_type;
 
 -- 10. Revenue by Cuisine Type
@@ -148,6 +152,6 @@ SELECT
     COUNT(DISTINCT r.restaurant_id) AS restaurant_count
 FROM orders o
 JOIN restaurants r ON o.restaurant_id = r.restaurant_id
-WHERE o.order_status IN ('Delivered', 'Refunded')
+WHERE o.order_status = 'Delivered'
 GROUP BY r.cuisine_type
 ORDER BY total_revenue DESC;

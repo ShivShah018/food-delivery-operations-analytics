@@ -5,6 +5,7 @@ Run:  pytest tests/test_features.py -v
 """
 
 import sys
+import pytest
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -12,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.feature_engineering import (
     build_customer_features,
+    build_restaurant_features,
     build_driver_features,
     build_time_series,
 )
@@ -118,3 +120,73 @@ class TestTimeSeries:
         assert len(daily) == 2  # two distinct dates
         assert len(monthly) == 2  # Jan and Feb
         assert daily["revenue"].sum() == 600
+
+
+class TestRestaurantFeatures:
+    def test_cancellation_rate_computed_from_all_orders(self):
+        orders = pd.DataFrame({
+            "order_id": ["O1", "O2", "O3", "O4"],
+            "restaurant_id": ["R1", "R1", "R1", "R2"],
+            "customer_id": ["C1", "C1", "C2", "C3"],
+            "total_amount": [100, 200, 300, 400],
+            "discount": [0, 0, 0, 0],
+            "order_status": ["Delivered", "Cancelled", "Delivered", "Cancelled"],
+            "order_date": ["2023-01-01", "2023-01-02", "2023-01-03", "2023-01-04"],
+            "payment_method": ["UPI", "UPI", "UPI", "UPI"],
+        })
+        order_items = pd.DataFrame({
+            "order_id": ["O1", "O2", "O3"],
+            "quantity": [2, 1, 3],
+        })
+        restaurants = pd.DataFrame({
+            "restaurant_id": ["R1", "R2"],
+            "name": ["R1", "R2"],
+            "cuisine_type": ["Indian", "Chinese"],
+            "city": ["Mumbai", "Delhi"],
+            "rating": [4.0, 3.5],
+            "avg_cost_for_two": [500, 400],
+            "join_date": ["2022-01-01", "2022-06-01"],
+            "is_active": [True, True],
+            "preparation_time_mins": [15, 20],
+        })
+        result = build_restaurant_features(orders, order_items, restaurants)
+        r1 = result[result["restaurant_id"] == "R1"].iloc[0]
+        r2 = result[result["restaurant_id"] == "R2"].iloc[0]
+        # R1: 3 total (2 delivered + 1 cancelled) → 1/3 = 0.333
+        assert r1["cancellation_rate"] == pytest.approx(1 / 3, abs=0.01)
+        # R2: 1 total (1 cancelled) → 1/1 = 1.0
+        assert r2["cancellation_rate"] == 1.0
+        assert r1["total_orders"] == 2  # only delivered/refunded count as orders
+        assert r2["total_orders"] == 0  # no delivered orders
+
+    def test_restaurant_features_columns_present(self):
+        orders = pd.DataFrame({
+            "order_id": ["O1"],
+            "restaurant_id": ["R1"],
+            "customer_id": ["C1"],
+            "total_amount": [100],
+            "discount": [0],
+            "order_status": ["Delivered"],
+            "order_date": ["2023-01-01"],
+            "payment_method": ["UPI"],
+        })
+        order_items = pd.DataFrame({
+            "order_id": ["O1"],
+            "quantity": [2],
+        })
+        restaurants = pd.DataFrame({
+            "restaurant_id": ["R1"],
+            "name": ["Test"],
+            "cuisine_type": ["Indian"],
+            "city": ["Mumbai"],
+            "rating": [4.0],
+            "avg_cost_for_two": [500],
+            "join_date": ["2022-01-01"],
+            "is_active": [True],
+            "preparation_time_mins": [15],
+        })
+        result = build_restaurant_features(orders, order_items, restaurants)
+        assert "cancellation_rate" in result.columns
+        assert "total_orders" in result.columns
+        assert "total_revenue" in result.columns
+        assert "revenue_tier" in result.columns

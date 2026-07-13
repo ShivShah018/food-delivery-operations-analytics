@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from config import RAW_DIR, GEN_CONFIG, LOG_FILE, LOG_FORMAT, LOG_DATE_FORMAT
+from config import RAW_DIR, GEN_CONFIG, ON_TIME_CUTOFF_MINUTES, LOG_FILE, LOG_FORMAT, LOG_DATE_FORMAT
 
 logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format=LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
 logger = logging.getLogger("generate_data")
@@ -198,7 +198,7 @@ def gen_delivery_logs(orders):
                      round(random.uniform(0.5, 15.0), 2), travel,
                      random.choices(TRAFFIC, weights=[0.30, 0.35, 0.25, 0.10])[0],
                      random.choices(WEATHER, weights=[0.50, 0.25, 0.15, 0.07, 0.03])[0],
-                     travel <= 40))
+                     travel <= ON_TIME_CUTOFF_MINUTES))
     return pd.DataFrame(rows, columns=["delivery_id", "order_id", "driver_id", "pickup_datetime",
                                        "drop_datetime", "distance_km", "travel_time_mins",
                                        "traffic_condition", "weather_condition", "is_on_time"])

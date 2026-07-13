@@ -33,7 +33,8 @@ CREATE TABLE customers (
     signup_date     DATE,
     is_active       BOOLEAN         DEFAULT TRUE,
     created_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_city (city)
 );
 
 -- -----------------------------------------------------------
@@ -53,7 +54,8 @@ CREATE TABLE restaurants (
     is_active           BOOLEAN         DEFAULT TRUE,
     preparation_time_mins INT           CHECK (preparation_time_mins BETWEEN 2 AND 60),
     created_at          TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at          TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_cuisine (cuisine_type)
 );
 
 -- -----------------------------------------------------------
@@ -72,7 +74,8 @@ CREATE TABLE drivers (
     join_date       DATE,
     is_active       BOOLEAN         DEFAULT TRUE,
     created_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_vehicle (vehicle_type)
 );
 
 -- -----------------------------------------------------------
@@ -110,7 +113,9 @@ CREATE TABLE orders (
     INDEX idx_customer (customer_id),
     INDEX idx_restaurant (restaurant_id),
     INDEX idx_status (order_status),
-    INDEX idx_payment (payment_method)
+    INDEX idx_payment (payment_method),
+    -- Composite covering index: every analytical query filters by status AND orders by date
+    INDEX idx_status_date (order_status, order_date)
 );
 
 -- -----------------------------------------------------------
@@ -128,7 +133,8 @@ CREATE TABLE order_items (
 
     FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE ON UPDATE CASCADE,
     INDEX idx_order (order_id),
-    INDEX idx_category (category)
+    INDEX idx_category (category),
+    INDEX idx_item_name (item_name)
 );
 
 -- -----------------------------------------------------------
@@ -151,7 +157,9 @@ CREATE TABLE delivery_logs (
     FOREIGN KEY (driver_id) REFERENCES drivers(driver_id) ON DELETE RESTRICT ON UPDATE CASCADE,
 
     INDEX idx_driver (driver_id),
-    INDEX idx_on_time (is_on_time)
+    INDEX idx_on_time (is_on_time),
+    INDEX idx_traffic (traffic_condition),
+    INDEX idx_weather (weather_condition)
 );
 
 -- ============================================================

@@ -67,6 +67,7 @@ RFM_THRESHOLDS = {
 }
 
 # ── Delivery Performance Threshold ─────────────────────────────
+# Used by generate_data.py to flag on-time deliveries (travel <= this threshold)
 ON_TIME_CUTOFF_MINUTES = 40
 
 # ── MySQL Connection ───────────────────────────────────────────

@@ -8,11 +8,11 @@ SELECT
     (SELECT COUNT(DISTINCT customer_id) FROM customers WHERE is_active = 1) AS active_customers,
     (SELECT COUNT(DISTINCT restaurant_id) FROM restaurants WHERE is_active = 1) AS active_restaurants,
     (SELECT COUNT(DISTINCT driver_id) FROM drivers WHERE is_active = 1) AS active_drivers,
-    ROUND((SELECT SUM(total_amount) FROM orders WHERE order_status IN ('Delivered', 'Refunded')), 2) AS total_revenue,
+    ROUND((SELECT SUM(total_amount) FROM orders WHERE order_status = 'Delivered'), 2) AS total_revenue,
     (SELECT COUNT(*) FROM orders WHERE order_status = 'Delivered') AS total_delivered_orders,
     ROUND((SELECT AVG(total_amount) FROM orders WHERE order_status = 'Delivered'), 2) AS avg_order_value,
     ROUND((SELECT SUM(discount) * 100.0 / NULLIF(SUM(total_amount + discount), 0)
-           FROM orders WHERE order_status IN ('Delivered', 'Refunded')), 2) AS overall_discount_rate_pct,
+           FROM orders WHERE order_status = 'Delivered'), 2) AS overall_discount_rate_pct,
     ROUND((SELECT SUM(CASE WHEN is_on_time = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)
            FROM delivery_logs), 2) AS overall_on_time_rate_pct,
     ROUND((SELECT AVG(customer_rating) FROM orders WHERE customer_rating IS NOT NULL), 2) AS avg_customer_rating,
@@ -28,7 +28,7 @@ WITH monthly_kpis AS (
         COUNT(DISTINCT customer_id) AS unique_customers,
         ROUND(SUM(discount) * 100.0 / NULLIF(SUM(total_amount + discount), 0), 2) AS discount_rate
     FROM orders
-    WHERE order_status IN ('Delivered', 'Refunded')
+    WHERE order_status = 'Delivered'
     GROUP BY year_month
 )
 SELECT
@@ -52,7 +52,7 @@ WITH customer_value AS (
         ROUND(SUM(total_amount), 2) AS lifetime_value,
         NTILE(10) OVER (ORDER BY SUM(total_amount) DESC) AS decile
     FROM orders
-    WHERE order_status IN ('Delivered', 'Refunded')
+    WHERE order_status = 'Delivered'
     GROUP BY customer_id
 )
 SELECT
@@ -134,15 +134,24 @@ ORDER BY cohort_month;
 
 -- 47. Customer Lifetime Value Trend (Top 10% by Monthly Cohort)
 -- Shows whether newly acquired customers are spending more or less over time.
-WITH cohort_ltv AS (
+-- Step 1: aggregate to customer-month level (no window functions in GROUP BY)
+WITH customer_monthly AS (
     SELECT
-        DATE_FORMAT(o.order_date, '%Y-%m') AS order_month,
-        DATE_FORMAT(MIN(o.order_date) OVER(PARTITION BY o.customer_id), '%Y-%m') AS acquisition_month,
         o.customer_id,
+        DATE_FORMAT(o.order_date, '%Y-%m') AS order_month,
         SUM(o.total_amount) AS monthly_spend
     FROM orders o
     WHERE o.order_status = 'Delivered'
-    GROUP BY o.customer_id, order_month, acquisition_month
+    GROUP BY o.customer_id, DATE_FORMAT(o.order_date, '%Y-%m')
+),
+-- Step 2: add acquisition month via window function
+cohort_ltv AS (
+    SELECT
+        order_month,
+        MIN(order_month) OVER(PARTITION BY customer_id) AS acquisition_month,
+        customer_id,
+        monthly_spend
+    FROM customer_monthly
 )
 SELECT
     acquisition_month,
@@ -156,27 +165,29 @@ GROUP BY acquisition_month
 ORDER BY acquisition_month;
 
 -- 48. Platform Economics Breakdown
+-- Shows each component's share of the pre-discount total.
+-- Discounts (negative) are converted to absolute values for percentage calculation.
+WITH components AS (
+    SELECT 'Food Value' AS component, SUM(order_amount) AS raw_value
+    FROM orders WHERE order_status = 'Delivered'
+    UNION ALL
+    SELECT 'Delivery Fee', SUM(delivery_fee)
+    FROM orders WHERE order_status = 'Delivered'
+    UNION ALL
+    SELECT 'Tax', SUM(tax)
+    FROM orders WHERE order_status = 'Delivered'
+    UNION ALL
+    SELECT 'Platform Fee', SUM(platform_fee)
+    FROM orders WHERE order_status = 'Delivered'
+    UNION ALL
+    SELECT 'Discounts Given', SUM(discount)
+    FROM orders WHERE order_status = 'Delivered'
+)
 SELECT
-    'Food Value' AS component,
-    ROUND(SUM(order_amount), 2) AS total_value,
-    ROUND(SUM(order_amount) * 100.0 / SUM(SUM(total_amount + discount)) OVER(), 2) AS share_pct
-FROM orders WHERE order_status IN ('Delivered', 'Refunded')
-UNION ALL
-SELECT 'Delivery Fee', ROUND(SUM(delivery_fee), 2),
-    ROUND(SUM(delivery_fee) * 100.0 / SUM(SUM(total_amount + discount)) OVER(), 2)
-FROM orders WHERE order_status IN ('Delivered', 'Refunded')
-UNION ALL
-SELECT 'Tax', ROUND(SUM(tax), 2),
-    ROUND(SUM(tax) * 100.0 / SUM(SUM(total_amount + discount)) OVER(), 2)
-FROM orders WHERE order_status IN ('Delivered', 'Refunded')
-UNION ALL
-SELECT 'Platform Fee', ROUND(SUM(platform_fee), 2),
-    ROUND(SUM(platform_fee) * 100.0 / SUM(SUM(total_amount + discount)) OVER(), 2)
-FROM orders WHERE order_status IN ('Delivered', 'Refunded')
-UNION ALL
-SELECT 'Discounts Given', ROUND(SUM(discount), 2),
-    ROUND(SUM(discount) * 100.0 / SUM(SUM(total_amount + discount)) OVER(), 2)
-FROM orders WHERE order_status IN ('Delivered', 'Refunded');
+    component,
+    ROUND(raw_value, 2) AS total_value,
+    ROUND(raw_value * 100.0 / NULLIF(SUM(ABS(raw_value)) OVER(), 0), 2) AS share_pct
+FROM components;
 
 -- 49. Surge Pricing Impact Analysis
 SELECT
@@ -200,7 +211,7 @@ SELECT
     'Total Revenue (All Time)' AS metric,
     ROUND(SUM(total_amount), 2) AS value,
     'INR' AS unit
-FROM orders WHERE order_status IN ('Delivered', 'Refunded')
+FROM orders WHERE order_status = 'Delivered'
 UNION ALL
 SELECT 'Total Orders', COUNT(*), 'Orders'
 FROM orders WHERE order_status = 'Delivered'

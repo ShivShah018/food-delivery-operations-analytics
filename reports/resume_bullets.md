@@ -10,7 +10,7 @@
 
 ### Data Analyst
 
-- Designed and executed a complete analytics pipeline (generation, cleaning, feature engineering, SQL analysis, dashboard) using Python (Pandas/NumPy), reducing manual data processing effort by 80% through automation.
+- Designed and executed a complete analytics pipeline (generation, cleaning, feature engineering, SQL analysis, dashboard) using Python (Pandas/NumPy), eliminating manual processing through a fully automated one-command pipeline.
 - Engineered RFM-based customer segmentation across 12,000 customers using Pandas, identifying 6 behavioural segments (Platinum/Gold/Silver/At Risk/Churned/New) — enabling targeted marketing campaigns projected to improve retention by 15%.
 - Wrote 50 production SQL queries across 5 business domains (revenue, customers, operations, restaurants, KPIs) using window functions, CTEs, and cohort analysis to extract actionable insights for management.
 - Built a 5-page Power BI dashboard with 15+ custom DAX measures, drill-through navigation, time intelligence (MoM/YoY growth), and interactive slicers for real-time executive monitoring.
@@ -51,7 +51,7 @@
 | "Analysed 65,000+ orders generating INR 12.8M+ in revenue" | Calculated from orders table |
 | "Identified 6 customer segments enabling targeted marketing" | RFM segmentation in feature engineering |
 | "Achieved 100% test pass rate across 40 unit/integration tests" | pytest output |
-| "Reduced manual processing effort by 80% through pipeline automation" | Estimated vs `run_pipeline.py` |
+| "Automated end-to-end data pipeline from generation to dashboard" | `run_pipeline.py` orchestrator |
 | "Built 50 SQL queries with CTEs, window functions, and Pareto analysis" | 5 SQL files × 10 queries each |
 
 ---

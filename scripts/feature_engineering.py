@@ -124,7 +124,6 @@ def build_restaurant_features(orders: pd.DataFrame, order_items: pd.DataFrame, r
         avg_order_value=("total_amount", "mean"),
         total_discount=("discount", "sum"),
         unique_customers=("customer_id", "nunique"),
-        cancellation_rate=("order_status", lambda x: (x == "Cancelled").mean()),
     ).reset_index()
 
     items = order_items.groupby("order_id")["quantity"].sum().reset_index()
@@ -135,19 +134,32 @@ def build_restaurant_features(orders: pd.DataFrame, order_items: pd.DataFrame, r
     perf = perf.merge(items_per_rest, on="restaurant_id", how="left")
     result = restaurants.merge(perf, on="restaurant_id", how="left")
     for col in ["total_orders", "total_revenue", "avg_order_value", "total_discount",
-                "unique_customers", "cancellation_rate", "avg_items_per_order"]:
+                "unique_customers", "avg_items_per_order"]:
         result[col] = result[col].fillna(0)
 
-    result["revenue_per_customer"] = np.where(
-        result["unique_customers"] > 0,
-        result["total_revenue"] / result["unique_customers"],
-        0,
+    # Cancellation rate uses ALL orders, merged to result (not perf)
+    # so restaurants with 0 delivered orders still get a correct rate.
+    cancel = orders.groupby("restaurant_id")["order_status"].apply(
+        lambda x: (x == "Cancelled").mean()
+    ).reset_index(name="cancellation_rate")
+    result = result.merge(cancel, on="restaurant_id", how="left")
+    result["cancellation_rate"] = result["cancellation_rate"].fillna(0)
+
+    result["revenue_per_customer"] = np.divide(
+        result["total_revenue"], result["unique_customers"],
+        where=result["unique_customers"] > 0,
+        out=np.zeros_like(result["total_revenue"], dtype=float),
     )
     # Quartile-based revenue tier; low-revenue restaurants get 1-day clamp to avoid qcut failure
-    result["revenue_tier"] = pd.qcut(
-        result["total_revenue"].clip(lower=1), q=4,
-        labels=["Low", "Medium", "High", "Top"],
-    )
+    try:
+        result["revenue_tier"] = pd.qcut(
+            result["total_revenue"].clip(lower=1), q=4,
+            labels=["Low", "Medium", "High", "Top"],
+            duplicates="drop",
+        )
+    except ValueError:
+        # Edge case: too few unique values for 4 quartiles (e.g., single restaurant)
+        result["revenue_tier"] = "Medium"
     logger.info("Restaurant features built: %s rows", len(result))
     return result
 
