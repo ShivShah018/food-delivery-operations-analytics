@@ -1,6 +1,0 @@
-{
-  "$schema": "https://pbi.tools/schema/settings.json",
-  "version": "1.0",
-  "modelSerialization": "Raw",
-  "mashupSerialization": "Default"
-}

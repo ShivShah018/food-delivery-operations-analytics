@@ -42,8 +42,7 @@ swiftdash-ops-analytics/
 │   ├── clean_data.py              # Data cleaning & validation
 │   ├── feature_engineering.py     # RFM, segments, aggregations
 │   ├── generate_visualizations.py # EDA & Power BI-style dashboard screenshots
-│   ├── load_to_mysql.py           # MySQL bulk loader
-│   └── build_powerbi.py           # Power BI PbixProj generator
+│   └── load_to_mysql.py           # MySQL bulk loader
 │
 ├── notebooks/
 │   └── 01_exploratory_data_analysis.ipynb
@@ -61,10 +60,7 @@ swiftdash-ops-analytics/
 │   └── er_diagram.md              # Entity-relationship diagram (Mermaid)
 │
 ├── dashboard/
-│   ├── swiftdash_dashboard.pbip/  # PbixProj folder (model, mashup, report)
-│   │   └── model/.tmdl/           # TMDL — 9 tables + Calendar + 25 DAX measures
-│   ├── swiftdash_measures.dax     # DAX measures (reference copy)
-│   └── swiftdash_dashboard.pbit   # Power BI Template (open & refresh)
+│   └── swiftdash_measures.dax     # All 25+ DAX measures
 │
 ├── tests/
 │   ├── test_cleaning.py           # 20 data cleaning tests
@@ -77,8 +73,7 @@ swiftdash-ops-analytics/
 │   ├── interview_questions.md
 │   └── resume_bullets.md
 │
-├── screenshots/                   # EDA & dashboard exports
-└── logs/                          # Pipeline execution logs
+└── screenshots/                   # EDA & dashboard exports
 ```
 
 ---
@@ -198,39 +193,17 @@ Executive scorecard, MoM KPI comparison, top 10% customer contribution (`NTILE`)
 
 ## Power BI Dashboard
 
-The dashboard is available as a **PbixProj folder** ([open-source format](https://pbi.tools/)) that can be compiled into a `.pbit` template and then opened in Power BI Desktop.
-
-### Quick start (PbixProj → .pbit → .pbix)
-
-**Option A — pbi-tools** (requires Power BI Desktop v2.155.x installed):
-
-```bash
-python scripts/build_powerbi.py                           # generate PbixProj
-pbi-tools compile dashboard/swiftdash_dashboard.pbip \
-            dashboard/swiftdash_dashboard.pbit PBIT True  # compile .pbit
-```
-
-**Option B — Power BI Desktop**:
-
-1. Open `dashboard/swiftdash_dashboard.pbit` (or the `.pbit` generated above)
-2. Data → Transform Data → Source → point CSV paths to your `data/cleaned/` and `data/processed/`
-3. Close & Apply → model loads and relationships are ready
-4. All 5 report pages are pre‑laid out; use the Fields pane to bind visuals
-5. File → Save As → `.pbix`
-
-> **Note:** The PbixProj uses `"modelSerialization": "Raw"` (TMSL JSON). The model is stored as a single `Model/database.json` file. This avoids TMDL parser incompatibilities between pbi-tools and Power BI Desktop v2.155.
+The repository includes dashboard screenshots, DAX measure definitions, data model documentation, and a detailed build guide. The dashboard can be recreated in Power BI Desktop using the provided datasets, DAX measures, and documentation.
 
 ### What's included
 
 | Artifact | Description |
 |----------|-------------|
-| `dashboard/swiftdash_dashboard.pbip/` | PbixProj with TMSL model (10 tables), M queries, report layout |
 | `dashboard/swiftdash_measures.dax` | All 25+ DAX measures as reference text |
-| `dashboard/swiftdash_dashboard.pbit` | Compiled Power BI Template (open → refresh → save as .pbix) |
+| `reports/power_bi_dashboard_guide.md` | Step-by-step dashboard build instructions |
+| `screenshots/` | 12 exported dashboard and EDA screenshots |
 
 ### Data model
-
-TMSL definition at `dashboard/swiftdash_dashboard.pbip/Model/database.json`:
 
 - **9 fact/dimension tables**: customers, restaurants, drivers, orders, order_items, delivery_logs, customer_features, restaurant_features, daily_metrics
 - **Calendar table**: date, year, quarter, month, weekday, is_weekend
@@ -251,7 +224,7 @@ TMSL definition at `dashboard/swiftdash_dashboard.pbip/Model/database.json`:
 
 ## Dashboard Preview
 
-5-page Power BI dashboard built on the data model (PbixProj in `dashboard/`):
+5-page Power BI dashboard built on the data model:
 
 | Executive Summary | Customer Analytics | Restaurant Analytics |
 |:---:|:---:|:---:|
@@ -261,7 +234,7 @@ TMSL definition at `dashboard/swiftdash_dashboard.pbip/Model/database.json`:
 |:---:|:---:|
 | ![Delivery Operations](screenshots/dashboard_delivery_operations.png) | ![Business Insights](screenshots/dashboard_business_insights.png) |
 
-All 5 pages are included in the [PbixProj template](dashboard/swiftdash_dashboard.pbip/) — open in Power BI Desktop → Refresh → Save As `.pbix`.
+Refer to the [dashboard build guide](reports/power_bi_dashboard_guide.md) and [DAX measures](dashboard/swiftdash_measures.dax) to recreate all 5 pages in Power BI Desktop.
 
 ---
 
@@ -348,14 +321,7 @@ Then: `python run_pipeline.py` (the MySQL step runs automatically unless you pas
 
 ### Power BI
 
-```bash
-# Generate PbixProj folder from pipeline outputs
-python scripts/build_powerbi.py
-```
-
-Then open `dashboard/swiftdash_dashboard.pbit` in Power BI Desktop, refresh data, and Save As `.pbix`.
-
-See the [dashboard section](#power-bi-dashboard) above for detailed build instructions.
+Open Power BI Desktop → Get Data → CSV → select files from `data/cleaned/` and `data/processed/` → build the data model and measures as documented in the [dashboard build guide](reports/power_bi_dashboard_guide.md) and the [DAX measures file](dashboard/swiftdash_measures.dax).
 
 ---
 
